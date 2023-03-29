@@ -1,7 +1,7 @@
 # K-Nearest-Neighbors
 My implementation of KNN for my Intro to Artificial Intelligence class.
 
-We are given a set of training and testing data.
+We are given a set of training data, with 1469 items, and testing data, with 3429 items.
 Each point has 11 attributes and a class label.
 
 The general pseudocode is:
