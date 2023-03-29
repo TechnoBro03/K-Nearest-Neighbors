@@ -2,8 +2,12 @@
 My implementation of KNN for my Intro to Artificial Intelligence class.
 
 We are given a set of training data, with 1469 items, and testing data, with 3429 items.
+
 Each point has 11 attributes (or dimensions) and a class label.
 
+This means the distance between 2 points in 11-dimensional space is calculated 5,037,201 times, for each value of 'k'.
+
+-----------------------------------------
 The general pseudocode is:
 - For each item X in testing data:
   - Calculate distance to each point Xi in training data
