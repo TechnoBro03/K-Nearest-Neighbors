@@ -2,7 +2,7 @@
 My implementation of KNN for my Intro to Artificial Intelligence class.
 
 We are given a set of training data, with 1469 items, and testing data, with 3429 items.
-Each point has 11 attributes and a class label.
+Each point has 11 attributes (or dimensions) and a class label.
 
 The general pseudocode is:
 - For each item X in testing data:
