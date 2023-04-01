@@ -5,7 +5,7 @@ We are given a set of training data, with 1469 items, and testing data, with 342
 
 Each point has 11 attributes (or dimensions) and a class label.
 
-This means the distance between 2 points in 11-dimensional space is calculated 5,037,201 times, for each value of 'k'.
+To give an idea of the computation that occurs: The distance between 2 points, in 11-dimensional space, is calculated 5,037,201 times, for each value of 'k'.
 
 -----------------------------------------
 The general pseudocode is:
