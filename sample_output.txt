@@ -1,0 +1,31 @@
+Enter value for k (0 to exit): 5
+
+        K Value = 5
+        Number of correctly classified instances: 1461
+        Total number of instances in the test set: 3425
+        Percentage of correctly classified instances: 42.6569%
+        Elapsed time: 4.24669s
+
+Enter value for k (0 to exit): 15
+
+        K Value = 15
+        Number of correctly classified instances: 1525
+        Total number of instances in the test set: 3425
+        Percentage of correctly classified instances: 44.5255%
+        Elapsed time: 4.32729s
+
+Enter value for k (0 to exit): 25
+
+        K Value = 25
+        Number of correctly classified instances: 1530
+        Total number of instances in the test set: 3425
+        Percentage of correctly classified instances: 44.6715%
+        Elapsed time: 4.41845s
+
+Enter value for k (0 to exit): 100
+
+        K Value = 100
+        Number of correctly classified instances: 1590
+        Total number of instances in the test set: 3425
+        Percentage of correctly classified instances: 46.4234%
+        Elapsed time: 5.19469s
