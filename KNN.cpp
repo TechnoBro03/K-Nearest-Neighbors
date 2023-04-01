@@ -3,113 +3,125 @@
 #include <sstream> /// File reading
 #include <fstream> /// File reading
 #include <math.h> /// For math
+#include <queue> /// For priority queue (argmin)
 #include <float.h> /// For DBL_MAX
+#include <chrono> /// For timing
 
-#define index(pointX,attY) (pointX*NUMATTRIB + attY) /// Used to index 1D array
+#define index(x,y) (x + y*DIM)
 
 /// Constants
-const int NUMPOINTSTRAIN = 1469;
-const int NUMPOINTSTEST = 3429;
-const int NUMATTRIB = 12;
-
-const int K = 5;
+const int NUMTRAIN = 1469;
+const int NUMTEST = 3425;
+const int DIM = 12;
 
 const std::string PATHTRAIN = "wine_train.txt";
 const std::string PATHTEST = "wine_test.txt";
 
-/// A point is used in my implementation of argmin
-struct point
+void readFile(std::string path, double* arr, int numRows)
 {
-    int index;
-    double distance;
-    double label;
-    point()
-    {
-        index = -1;
-        distance = DBL_MAX;
-        label = 0;
-    }
-    point(int i, double d, double l)
-    {
-        index = i;
-        distance = d;
-        label = l;
-    }
-};
-
-void readFile(std::string path, double* arr, int numPoints)
-{
-	std::ifstream stream;
-	stream.open(path);
+    std::ifstream stream;
+    stream.open(path);
     std::string line;
 
-	for (int i = 0; i < numPoints; i++)
+    for (int i = 0; i < numRows; i++)
     {
-		std::getline(stream, line);
-		std::stringstream ss(line);
+        std::getline(stream, line);
+        std::stringstream ss(line);
         std::string substr;
 
-        for(int j = 0; j < NUMATTRIB; j++)
+        for(int j = 0; j < DIM; j++)
         {
             std::getline(ss, substr, ',');
-            arr[index(i,j)] = std::stod(substr);
+            arr[index(j,i)] = std::stod(substr);
         }
-	}
-	stream.close();
-	return;
+    }
+    stream.close();
+    return;
 }
 
 double getDistance(double* a, double* b, int pointA, int pointB)
 {
     double distance = 0;
-    /// Finds absolute difference between all features and squares it
-    for(int i = 0; i < NUMATTRIB-1; i++)
+	/// Finds absolute difference between all features and squares it
+    for(int dim = 0; dim < DIM-1; dim++)
     {
-        double c = std::abs(a[index(pointA, i)] - b[index(pointB, i)]);
+        double c = std::abs(a[index(dim, pointA)] - b[index(dim, pointB)]);
         distance += std::pow(c, 2);
     }
     /// No need to actually calculate square root, has no effect.
     return distance;
 }
 
-double getMode(point* arr, int len)
+/// Used for argmin
+/// A point keeps track of distance, index, and label
+struct point
 {
+    int index;
+    double distance;
+    double label;
+    point(int index, double distance, double label)
+    {
+        this->index = index;
+        this->distance = distance;
+        this->label = label;
+    }
+};
+
+/// Used for argmin priority queue comparisons
+class Compare
+{
+    public:
+    bool operator() (point a, point b)
+    {
+        if(a.distance < b.distance)
+        {
+            return true;
+        }
+        return false;
+    }
+};
+
+double getMode(std::priority_queue<point, std::vector<point>, Compare>& pq, int k)
+{
+    /// Empty priority queue into vector for ease of use
+    std::vector<point> arr;
+    while (!pq.empty()) {
+        arr.push_back(pq.top());
+        pq.pop();
+    }
+
     int maxCount = 0;
     double maxValue = 0;
     int smallestIndex = 0;
 
-    /// Count how many occurrences of each label
-    for (int i = 0; i < len; i++)
+    for(int i = 0; i < k; i++)
     {
         int count = 0;
-        for (int j = 0; j < len; j++)
+        int sIFL = i;
+        for(int j = 0; j < k; j++)
         {
-            if (arr[i].label == arr[j].label)
+            if(arr[i].label == arr[j].label)
             {
                 count++;
+                /// Keep track of smallest index for this label (sIFL)
+                if(arr[j].index < arr[sIFL].index)
+                {
+                    sIFL = j;
+                }
             }
         }
-
-        /// If a new max is found, change it
-        if (count > maxCount)
+        if(count > maxCount)
         {
             maxCount = count;
             maxValue = arr[i].label;
-            smallestIndex = i;
+            smallestIndex = sIFL;
         }
-        
-        /// If a tie is found, find the smallest index among points
+        /// If there is a tie, pick the point with the smallest index
         if(count == maxCount)
         {
-            for(int j = 0; j < len; j++)
+            if(arr[sIFL].index < arr[smallestIndex].index)
             {
-            if (arr[i].label == arr[j].label)
-            {
-                if(arr[smallestIndex].index > arr[j].index)
-                {
-                    smallestIndex = j;
-                }
-            }
+                smallestIndex = sIFL;
             }
             maxValue = arr[smallestIndex].label;
         }
@@ -119,83 +131,87 @@ double getMode(point* arr, int len)
 
 void myKNN(double* trainData, double* testData, int k)
 {
-    std::cout << "K Value = " << k << std::endl;
-    std::cout << "Index\tPredicted\tActual" << std::endl;
+    std::cout << "\n\tK Value = " << k << std::endl;
 
     int numCorrect = 0;
-    /// Keep track of only the min K points, for argmin
-    point* minKPoints = new point[k];
+
+    /// Implementation of argmin
+    /// Space complexity: O(k)
+    /// Time complexity: O(N*logK)
+    ///     std::sort() time complexity: O(N*logN)
+    /// Keep track of only the k min points
+    std::priority_queue<point, std::vector<point>, Compare> kMin;
 
     /// For each point in testData
-    for(int pointI = 0; pointI < NUMPOINTSTEST; pointI++)
+    for(int pointI = 0; pointI < NUMTEST; pointI++)
     {
-        /// Init minKPoint[] to max distance
-        int largestIndex = 0;
+        /// Init priority queue
         for(int i = 0; i < k; i++)
         {
-            minKPoints[i].distance = DBL_MAX;
+            kMin.push(point(0, DBL_MAX, 0));
         }
         
         /// For each point in trainData
-        for(int pointJ = 0; pointJ < NUMPOINTSTRAIN; pointJ++)
+        for(int pointJ = 0; pointJ < NUMTRAIN; pointJ++)
         {
-
-            /// Below is my implementation of argmin
-            /// Space complexity is O(k)
-            /// Time complexity is worst case O(k), only when "inserting" a new "closest" point
-            /// Time complexity is best case O(1), if point is not less than any other k-min points
-            /// No large vector/array to hold all distances, no sorting the vector/array at the end
-
             double d = getDistance(testData, trainData, pointI, pointJ);
 
             /// Create a new point to keep track if its index, distance, and label
-            point p(pointJ, d, trainData[index(pointJ, NUMATTRIB-1)]);
+            point p(pointJ, d, trainData[index(DIM-1, pointJ)]);
 
-            /// If point p has a smaller distance than the largest distance in minKPoints[], change
-            if(p.distance < minKPoints[largestIndex].distance)
+            /// If point p has a smaller distance than the largest distance in kMin
+            if(p.distance < kMin.top().distance)
             {
-                minKPoints[largestIndex] = p;
-
-                /// Find new largest index within minKPoints[]
-                largestIndex = 0;
-                for(int s = 0; s < k; s++)
-                {
-                    if(minKPoints[largestIndex].distance < minKPoints[s].distance)
-                    {
-                        largestIndex = s;
-                    }
-                }
+                kMin.pop(); /// Remove largest element: O(logN)
+                kMin.push(p); /// Add new element: O(logN)
             }
         }
 
         /// Get predicted label and compare to actual
-        double predicted = getMode(minKPoints, k);
-        double actual = testData[index(pointI,NUMATTRIB-1)];
+        double predicted = getMode(kMin, k);
+        double actual = testData[index(DIM-1, pointI)];
         if(predicted == actual)
         {
             numCorrect++;
         }
-        std::cout << pointI+1 << "\t" << predicted << "\t\t" << actual << std::endl;
     }
 
-    delete[] minKPoints;
-
-    std::cout << "\nNumber of correctly classified instances: " << numCorrect << "\nTotal number of instances in the test set: "
-    << NUMPOINTSTEST << "\nPercentage of correctly classified instances: " << std::round((double)numCorrect/NUMPOINTSTEST*10000)/100 << "%" << std::endl;
+    std::cout << "\tNumber of correctly classified instances: " << numCorrect << "\n\tTotal number of instances in the test set: "
+    << NUMTEST << "\n\tPercentage of correctly classified instances: " << (double)numCorrect/NUMTEST*100 << "%" << std::endl;
 }
 
 int main()
 {
     /// Store data in 1D array (more space and time efficient)
-    double* trainData = new double[NUMPOINTSTRAIN*NUMATTRIB];
-    double* testData = new double[NUMPOINTSTEST*NUMATTRIB];
+    double* trainData = new double[NUMTRAIN*DIM];
+    double* testData = new double[NUMTEST*DIM];
 
     try
     {
-    readFile(PATHTRAIN, trainData, NUMPOINTSTRAIN);
-    readFile(PATHTEST, testData, NUMPOINTSTEST);
+        /// Read files
+        readFile(PATHTRAIN, trainData, NUMTRAIN);
+        readFile(PATHTEST, testData, NUMTEST);
 
-    myKNN(trainData, testData, K);
+        /// Get user input for value of k
+        while(true)
+        {
+            int k;
+            std::cout << "Enter value for k (0 to exit): ";
+            std::cin >> k;
+            if(k == 0) break;
+
+            /// Start clock
+            std::chrono::time_point<std::chrono::system_clock> start, end;
+            start = std::chrono::system_clock::now();
+
+            myKNN(trainData, testData, k);
+
+            /// Stop clock
+            end = std::chrono::system_clock::now();
+            std::chrono::duration<double> elapsed_seconds = end - start;
+            
+            std::cout << "\tElapsed time: " << elapsed_seconds.count() << "s\n" << std::endl;
+        }
     }
     catch(...)
     {
@@ -204,9 +220,6 @@ int main()
 
     delete[] trainData;
     delete[] testData;
-
-    /// Keep terminal from closing
-    std::cin.get();
 
     return 0;
 }
