@@ -10,7 +10,7 @@ To give an idea of the computation that occurs: The distance between 2 points, i
 -----------------------------------------
 The general pseudocode is:
 - For each item X in testing data:
-  - Calculate distance to each point Xi in training data
+  - Calculate distance to each point Y in training data
   - Argsort these distances in increasing order
   - From the sorted list, select top 'k' items
   - Find the most frequent class from these 'k' items, this is the predicted class for X
